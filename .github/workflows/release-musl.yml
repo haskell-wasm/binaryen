@@ -1,0 +1,33 @@
+name: release-musl
+
+on:
+  push:
+
+jobs:
+  release-musl:
+    name: release-x86_64-linux-musl
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - run: git submodule update --init --depth 1 --jobs 2
+
+      - name: build & test
+        run: |
+          podman run \
+            --network host \
+            --pull always \
+            --rm \
+            --tmpfs /tmp:exec \
+            -v $PWD:/workspace \
+            -w /workspace \
+            alpine:edge \
+            /workspace/build-alpine.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaryen-x86_64-linux-musl
+          path: binaryen-version_114-x86_64-linux-musl.tar.xz
