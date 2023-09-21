@@ -1,0 +1,50 @@
+name: release-musl
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  release-musl:
+    name: release-x86_64-linux-musl
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: build-image
+        run: |
+          pushd "$(mktemp -d)"
+          curl -f -L --retry 5 https://github.com/tweag/rust-alpine-mimalloc/archive/refs/heads/master.tar.gz | tar xz --strip-components=1
+          podman build \
+            --network host \
+            --pull \
+            --squash-all \
+            --tag rust:alpine-mimalloc \
+            .
+          popd
+
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: checkout-submodules
+        run: git submodule update --init --depth 1 --jobs 2
+
+      - name: build & test
+        run: |
+          podman run \
+            --env GITHUB_REF_NAME=$GITHUB_REF_NAME \
+            --init \
+            --network host \
+            --rm \
+            --tmpfs /tmp:exec \
+            --volume $PWD:/workspace \
+            --workdir /workspace \
+            rust:alpine-mimalloc \
+            /workspace/build-alpine.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaryen-x86_64-linux-musl
+          path: binaryen-*-x86_64-linux-musl.tar.zst
