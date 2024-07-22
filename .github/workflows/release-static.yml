@@ -1,0 +1,54 @@
+name: release-static
+
+on:
+  push:
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  release-linux-static:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: build-image
+        shell: bash
+        run: |
+          pushd "$(mktemp -d)"
+          curl -f -L https://github.com/haskell-wasm/rust-alpine-mimalloc/archive/refs/heads/master.tar.gz | tar xz --strip-components=1
+          podman build \
+            --pull \
+            --tag rust:alpine-mimalloc \
+            .
+          popd
+
+      - name: build & test
+        shell: bash
+        run: |
+          podman run \
+            --env GITHUB_REF_NAME=$GITHUB_REF_NAME \
+            --init \
+            --rm \
+            --volume $PWD:/workspace \
+            --workdir /workspace \
+            rust:alpine-mimalloc \
+            /workspace/build-static.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: binaryen-${{ matrix.arch }}-linux-static
+          path: binaryen-*-${{ matrix.arch }}-linux-static.tar.gz
