@@ -1,0 +1,62 @@
+name: release-static
+
+on:
+  push:
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  release-linux-static:
+    name: release-${{ matrix.arch }}-linux-static
+    runs-on:
+      - ${{ matrix.runner_tag }}
+      - Linux
+      - podman
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner_tag: X64
+          - arch: aarch64
+            runner_tag: ARM64
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: build-image
+        shell: bash
+        run: |
+          pushd "$(mktemp -d)"
+          curl -f -L --retry 5 https://github.com/tweag/rust-alpine-mimalloc/archive/refs/heads/master.tar.gz | tar xz --strip-components=1
+          podman build \
+            --network host \
+            --pull \
+            --squash-all \
+            --tag rust:alpine-mimalloc \
+            .
+          popd
+
+      - name: build & test
+        shell: bash
+        run: |
+          podman run \
+            --env GITHUB_REF_NAME=$GITHUB_REF_NAME \
+            --init \
+            --network host \
+            --rm \
+            --volume $PWD:/workspace \
+            --workdir /workspace \
+            rust:alpine-mimalloc \
+            /workspace/build-static.sh
+
+          podman rmi rust:alpine-mimalloc
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaryen-${{ matrix.arch }}-linux-static
+          path: binaryen-*-${{ matrix.arch }}-linux-static.tar.gz

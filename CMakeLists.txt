@@ -284,7 +284,7 @@ else() # MSVC
     else()
       add_link_flag("-Wl,--stack,8388608")
     endif()
-  elseif(NOT EMSCRIPTEN)
+  elseif((NOT EMSCRIPTEN) AND (NOT BUILD_STATIC_LIB))
     add_compile_flag("-fPIC")
   endif()
   add_debug_compile_flag("-g3")
