@@ -1,0 +1,49 @@
+name: release-static
+
+on:
+  push:
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  release-x86_64-linux-static:
+    name: release-x86_64-linux-static
+    runs-on:
+      - X64
+      - Linux
+      - podman
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - x86_64
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: build-linux
+        uses: ./.github/actions/linux
+
+  release-aarch64-linux-static:
+    name: release-aarch64-linux-static
+    runs-on:
+      - ARM64
+      - Linux
+      - podman
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: build-linux
+        uses: ./.github/actions/linux
